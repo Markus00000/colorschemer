@@ -1,0 +1,16 @@
+Find color schemes with optimally distinct colors using Delta E (CIE2000).
+
+Procedure to find color schemes:
+
+  1. Generate all combinations (color schemes) of the chosen hues.
+  2. Discard all color schemes with colors that are too close.
+  3. For each color scheme adjust colors to meet the chosen minimum Delta E
+     towards the background.
+  4. For each color scheme calculate Delta E for all combinations of
+     red, yellow, green, cyan, blue and magenta. Discard color schemes with
+     Delta E values that are too low.
+  5. Output optimal color schemes.
+
+Parameters intended to be adjusted to your liking are documented in the source.
+
+Website: https://www.markusweimar.de/en/color-schemes/

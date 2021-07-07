@@ -58,8 +58,8 @@ if bright:
     min_delta_background_color = 50
     # Luminance is adjusted this much each step until the required delta to the
     # background is achieved
-    lum_adjust_highlight = -.01
-    lum_adjust_color = -.01
+    lum_adjust_highlight = -.001
+    lum_adjust_color = -.001
     # Fixed colors, use for example:
     #   sRGBColor.new_from_rgb_hex('#000000')
     #   sRGBColor(128, 0, 255, is_upscaled=True)
@@ -77,8 +77,8 @@ else:
     min_delta_background_color = 50
     # Luminance is adjusted this much each step until the required delta to the
     # background is achieved
-    lum_adjust_highlight = .01
-    lum_adjust_color = .01
+    lum_adjust_highlight = .001
+    lum_adjust_color = .001
     # Fixed colors, use for example:
     #   sRGBColor.new_from_rgb_hex('#000000')
     #   sRGBColor(128, 0, 255, is_upscaled=True)

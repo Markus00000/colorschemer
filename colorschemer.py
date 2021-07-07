@@ -152,8 +152,9 @@ def check_scheme(scheme):
     # Initialize variable for loop
     min_delta = float('inf')
     global current_min_delta
-    for x, y in combinations(scheme, 2):
-        delta = deltas[(x[0], y[0])]
+    # Compare Delta E of adjacent hues
+    for c1, c2 in pairs(scheme):
+        delta = deltas[(c1[0], c2[0])]
         if delta < current_min_delta.value:
             return
         # This is the Delta E of the scheme’s worst color combination
@@ -233,6 +234,18 @@ def grouper(iterable, n, fillvalue=None):
     # grouper('ABCDEFG', 3, 'x') --> ABC DEF Gxx"
     args = [iter(iterable)] * n
     return zip_longest(*args, fillvalue=fillvalue)
+
+
+def pairs(lst):
+    """Iterate over pairs in a list and wrap around."""
+    # Source: https://stackoverflow.com/a/1257446
+    i = iter(lst)
+    first = prev = item = next(i)
+    for item in i:
+        yield prev, item
+        prev = item
+    # Order matters for dictionary lookup
+    yield first, item
 
 
 if __name__ == "__main__":

@@ -168,7 +168,7 @@ def check_scheme(scheme):
                 notify = True
             current_min_delta.value = min_delta
     if notify:
-        print('== New minimum Delta E: {}'.format(min_delta))
+        print(f'== New minimum Delta E: {min_delta}')
     if new_best and output_schemes_early:
         output_scheme(finalize_scheme(
             [min_delta, min_hue_diff_scheme, scheme]))
@@ -220,8 +220,8 @@ def output_scheme(scheme):
     if scheme[1] - min_hue_diff < hue_step:
         print('# Warning: Scheme borders minimal hue difference')
     equation = delta_e.__name__.split('_')[-1]
-    print('# Minimum Delta E ({}): {}'.format(equation, scheme[0]))
-    print('# Minimum hue difference: {}'.format(scheme[1]))
+    print(f'# Minimum Delta E ({equation}): {scheme[0]}')
+    print(f'# Minimum hue difference: {scheme[1]}')
     print('# Hues: {}'.format(' '.join(map(str, hues))))
     for i in range(n):
         color_str = color_to_str(scheme[2][i][1])
@@ -285,7 +285,7 @@ if __name__ == "__main__":
     total_schemes = int(
         factorial(len(colors))
         / (factorial(n) * factorial(len(colors) - n)))
-    print('Total schemes: {}'.format(total_schemes))
+    print(f'Total schemes: {total_schemes}')
 
     # Discard schemes if they contain hues that are too similar or if their
     # Delta E of any two colors is too low

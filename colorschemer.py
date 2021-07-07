@@ -23,7 +23,10 @@ from multiprocessing import Pool
 from multiprocessing import Value
 
 from colormath.color_conversions import convert_color
-from colormath.color_diff import delta_e_cie2000
+#from colormath.color_diff import delta_e_cie1976 as delta_e
+#from colormath.color_diff import delta_e_cie1994 as delta_e
+from colormath.color_diff import delta_e_cie2000 as delta_e
+#from colormath.color_diff import delta_e_cmc as delta_e
 from colormath.color_objects import HSLColor
 from colormath.color_objects import LabColor
 from colormath.color_objects import sRGBColor
@@ -99,7 +102,7 @@ def convert_hue(hue, adjust=lum_adjust_color,
     color_hsl = HSLColor(hue, 1, .5)
     color_lab = convert_color(color_hsl, LabColor)
     while True:
-        if delta_e_cie2000(color_lab, background) < min_delta:
+        if delta_e(color_lab, background) < min_delta:
             color_hsl.hsl_l += adjust
             color_lab = convert_color(color_hsl, LabColor)
         else:
@@ -111,7 +114,7 @@ def calculate_delta(colors):
     # Structure of dictionary: dict([(hue_1, hue_2): delta_e, ...])
     global deltas
     deltas[(colors[0][0], colors[1][0])] = \
-        delta_e_cie2000(colors[0][1], colors[1][1])
+        delta_e(colors[0][1], colors[1][1])
 
 
 def check_scheme(scheme):
@@ -122,6 +125,7 @@ def check_scheme(scheme):
     if not scheme:
         return
     global lock
+
     # Show progress
     global processed
     with lock:
@@ -136,19 +140,23 @@ def check_scheme(scheme):
         print('   Elapsed time: {}'.format(str(elapsed).split('.')[0]))
         print('   Time left: {}'.format(
             str(elapsed * (1 / progress) - elapsed).split('.')[0]))
+
     # Check hues
     min_hue_diff_scheme = \
         min([scheme[i + 1][0] - scheme[i][0] for i in range(5)]
             + [scheme[0][0] + 360 - scheme[-1][0]])
     if min_hue_diff_scheme < min_hue_diff:
         return
+
     # Check Delta E values
-    min_delta = 100
+    # Initialize variable for loop
+    min_delta = float('inf')
     global current_min_delta
     for x, y in combinations(scheme, 2):
         delta = deltas[(x[0], y[0])]
         if delta < current_min_delta.value:
             return
+        # This is the Delta E of the scheme’s worst color combination
         min_delta = min(min_delta, delta)
     new_best = False
     notify = False
@@ -210,7 +218,8 @@ def output_scheme(scheme):
     hues = [color[0] for color in scheme[2]]
     if scheme[1] - min_hue_diff < hue_step:
         print('# Warning: Scheme borders minimal hue difference')
-    print('# Minimum Delta E: {}'.format(scheme[0]))
+    equation = delta_e.__name__.split('_')[-1]
+    print('# Minimum Delta E ({}): {}'.format(equation, scheme[0]))
     print('# Minimum hue difference: {}'.format(scheme[1]))
     print('# Hues: {}'.format(' '.join(map(str, hues))))
     for i in range(n):

@@ -5,7 +5,7 @@ Steps to generate optimal color schemes:
 
   1. Compile list of potential colors.
   2. Calculate Delta E between all colors.
-  3. Compile list of potential schemes with 6 colors each.
+  3. Compile list of potential schemes with a certain number of colors each.
   4. Discard schemes if they contain hues that are too similar or if their
      Delta E of any two colors is too low.
   5. Output remaining color schemes.
@@ -28,17 +28,20 @@ from colormath.color_objects import HSLColor
 from colormath.color_objects import LabColor
 from colormath.color_objects import sRGBColor
 
+# Number of colors per scheme
+n = 6
 # Output formats: 'hex', 'hsl', 'rgb' (0–1) or 'rgb_upscaled' (0–255)
 color_codes = ['hex']
 # Bright or dark background
 bright = True
-# Discard scheme if any hue combination is less than this many degrees apart
-min_hue_diff = 30
 # Spacing of hues in degrees, smaller spacing results in more potential schemes
+# Note: In edge cases larger steps can give slightly better results
 # (steps of 1° yield 2899305949260 schemes)
 # Factors of 360:
 # 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 18, 20, 24, 30, 36, 40, 45, 60
-hue_step = 10
+hue_step = 12
+# Discard scheme if any hue combination is less than this many degrees apart
+min_hue_diff = 12
 # Enable to use more RAM for better performance, disable to process larger
 # numbers of schemes that will not fit into your RAM
 load_schemes_into_ram = False
@@ -46,14 +49,13 @@ load_schemes_into_ram = False
 output_schemes_early = False
 # Parameters depending on bright or dark background
 if bright:
-    # One color can be adjusted to be used as a highlight color (e.g. when
-    # searching in a man page)
-    # Colors: 'red', 'yellow', 'green', 'cyan', 'blue', 'magenta'
-    highlight_color = 'yellow'
+    # Approximate hue of highlight color (e.g. background color for matches
+    # when searching in a man page), can be 'None'
+    highlight = 60
     # Minimum Delta E between the highlight color and the background
-    min_delta_background_highlight = 30
+    min_delta_background_highlight = 20
     # Minimum Delta E between all other colors and the background
-    min_delta_background_color = 55
+    min_delta_background_color = 50
     # Luminance is adjusted this much each step until the required delta to the
     # background is achieved
     lum_adjust_highlight = -.01
@@ -63,25 +65,16 @@ if bright:
     #   sRGBColor(128, 0, 255, is_upscaled=True)
     #   sRGBColor(.5, 0, 1)
     #   HSLColor(0, 0, .8)
-    # Black
-    color0 = sRGBColor.new_from_rgb_hex('#000000')
-    color8 = sRGBColor.new_from_rgb_hex('#000000')
-    # White
-    color7 = sRGBColor.new_from_rgb_hex('#cccccc')
-    color15 = sRGBColor.new_from_rgb_hex('#ffffff')
     # Background
-    background = color15
-    # Exclude hues
-    excluded_hues = []
+    background = sRGBColor.new_from_rgb_hex('#ffffff')
 else:
-    # One color can be adjusted to be used as a highlight color (e.g. when
-    # searching in a man page)
-    # Colors: 'red', 'yellow', 'green', 'cyan', 'blue', 'magenta'
-    highlight_color = 'blue'
+    # Approximate hue of highlight color (e.g. background color for matches
+    # when searching in a man page), can be 'None'
+    highlight = 240
     # Minimum Delta E between the highlight color and the background
-    min_delta_background_highlight = 30
+    min_delta_background_highlight = 20
     # Minimum Delta E between all other colors and the background
-    min_delta_background_color = 60
+    min_delta_background_color = 50
     # Luminance is adjusted this much each step until the required delta to the
     # background is achieved
     lum_adjust_highlight = .01
@@ -91,25 +84,11 @@ else:
     #   sRGBColor(128, 0, 255, is_upscaled=True)
     #   sRGBColor(.5, 0, 1)
     #   HSLColor(0, 0, .8)
-    # Black
-    color0 = sRGBColor.new_from_rgb_hex('#000000')
-    color8 = sRGBColor.new_from_rgb_hex('#000000')
-    # White
-    color7 = sRGBColor.new_from_rgb_hex('#555555')
-    color15 = sRGBColor.new_from_rgb_hex('#ffffff')
     # Background
-    background = color8
-    # Exclude hues
-    excluded_hues = []
+    background = sRGBColor.new_from_rgb_hex('#000000')
 
 # Convert colors
-color0 = convert_color(color0, LabColor)
-color8 = convert_color(color8, LabColor)
-color7 = convert_color(color7, LabColor)
-color15 = convert_color(color15, LabColor)
 background = convert_color(background, LabColor)
-highlight = ['red', 'yellow', 'green', 'cyan', 'blue', 'magenta'].index(
-    highlight_color)
 
 
 def convert_hue(hue, adjust=lum_adjust_color,
@@ -159,8 +138,8 @@ def check_scheme(scheme):
             str(elapsed * (1 / progress) - elapsed).split('.')[0]))
     # Check hues
     min_hue_diff_scheme = \
-        min([scheme[i + 1][0] - scheme[i][0] for i in range(5)] +
-            [scheme[0][0] + 360 - scheme[-1][0]])
+        min([scheme[i + 1][0] - scheme[i][0] for i in range(5)]
+            + [scheme[0][0] + 360 - scheme[-1][0]])
     if min_hue_diff_scheme < min_hue_diff:
         return
     # Check Delta E values
@@ -192,16 +171,20 @@ def finalize_scheme(scheme):
     the chosen Delta E to the background and ordering the colors of the scheme.
     """
     scheme[2] = list(scheme[2])
-    hues = [hue for hue, color in scheme[2]]
+    hues = [hue for hue, _ in scheme[2]]
     # Make sure the first hue is closest to red
     if 360 - max(hues) < min(hues):
         scheme[2].insert(0, scheme[2].pop())
         hues.insert(0, hues.pop())
-    # Adjust luminance of highlight color
-    color = convert_hue(hues[highlight], lum_adjust_highlight,
-                        min_delta_background_highlight)[1]
-    # Add adjusted color
-    scheme[2][highlight] = (hues[highlight], color)
+    if highlight:
+        # Find nearest color to chosen highlight color
+        highlight_hue = min(hues, key=lambda x: abs(x - highlight))
+        highlight_pos = hues.index(highlight_hue)
+        # Adjust luminance of highlight color
+        color = convert_hue(highlight_hue, lum_adjust_highlight,
+                            min_delta_background_highlight)[1]
+        # Insert final highlight color into scheme
+        scheme[2][highlight_pos] = (highlight_hue, color)
     return scheme
 
 
@@ -230,30 +213,9 @@ def output_scheme(scheme):
     print('# Minimum Delta E: {}'.format(scheme[0]))
     print('# Minimum hue difference: {}'.format(scheme[1]))
     print('# Hues: {}'.format(' '.join(map(str, hues))))
-    print('# black')
-    print('color0  = {}'.format(color_to_str(color0)))
-    print('color8  = {}'.format(color_to_str(color8)))
-    print('# red')
-    print('color1  = {}'.format(color_to_str(scheme[2][0][1])))
-    print('color9  = {}'.format(color_to_str(scheme[2][0][1])))
-    print('# green')
-    print('color2  = {}'.format(color_to_str(scheme[2][2][1])))
-    print('color10 = {}'.format(color_to_str(scheme[2][2][1])))
-    print('# yellow')
-    print('color3  = {}'.format(color_to_str(scheme[2][1][1])))
-    print('color11 = {}'.format(color_to_str(scheme[2][1][1])))
-    print('# blue')
-    print('color4  = {}'.format(color_to_str(scheme[2][4][1])))
-    print('color12 = {}'.format(color_to_str(scheme[2][4][1])))
-    print('# magenta')
-    print('color5  = {}'.format(color_to_str(scheme[2][5][1])))
-    print('color13 = {}'.format(color_to_str(scheme[2][5][1])))
-    print('# cyan')
-    print('color6  = {}'.format(color_to_str(scheme[2][3][1])))
-    print('color14 = {}'.format(color_to_str(scheme[2][3][1])))
-    print('# white')
-    print('color7  = {}'.format(color_to_str(color7)))
-    print('color15 = {}'.format(color_to_str(color15)))
+    for i in range(n):
+        color_str = color_to_str(scheme[2][i][1])
+        print(f'Color {i}: {color_str}')
 
 
 def grouper(iterable, n, fillvalue=None):
@@ -269,9 +231,12 @@ if __name__ == "__main__":
     processes = cpu_count()
     manager = Manager()
 
-    # Compile list of hues
-    hues = range(0, 360, hue_step)
-    hues = [hue for hue in hues if hue not in excluded_hues]
+    # Compile list of hues, optionally including highlight hue
+    if highlight:
+        hues = range(highlight, highlight + 360, hue_step)
+        hues = sorted([hue if hue < 360 else hue - 360 for hue in hues])
+    else:
+        hues = range(0, 360, hue_step)
 
     # Compile list of potential colors as (hue, LabColor) pairs
     colors = manager.list()
@@ -293,10 +258,11 @@ if __name__ == "__main__":
     deltas = dict(deltas)
     print('Color deltas calculated')
 
-    # Compile list of potential schemes with 6 colors each
-    schemes = combinations(colors, 6)
+    # Compile list of potential schemes with n colors each
+    schemes = combinations(colors, n)
     total_schemes = int(
-        factorial(len(colors)) / (factorial(6) * factorial(len(colors) - 6)))
+        factorial(len(colors))
+        / (factorial(n) * factorial(len(colors) - n)))
     print('Total schemes: {}'.format(total_schemes))
 
     # Discard schemes if they contain hues that are too similar or if their
@@ -305,18 +271,6 @@ if __name__ == "__main__":
     processed = Value('i', 0)
     lock = Lock()
     schemes_checked = []
-    # Process a known reference scheme with high Delta E values, so worse
-    # schemes can be discarded faster in the next step
-    with Pool(1) as pool:
-        if bright:
-            ref_hues = [5, 45, 100, 180, 220, 310]
-        else:
-            ref_hues = [5, 45, 100, 180, 220, 310]
-        ref_hues = [min(hues, key=lambda x: abs(x - hue)) for hue in ref_hues]
-        ref_scheme = [color for color in colors if color[0] in ref_hues]
-        schemes_checked.extend(pool.map(check_scheme, [ref_scheme]))
-        pool.close()
-        pool.join()
     # Process all other schemes
     with Pool(processes) as pool:
         if load_schemes_into_ram:

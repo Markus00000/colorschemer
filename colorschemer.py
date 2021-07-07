@@ -141,20 +141,27 @@ def check_scheme(scheme):
         print('   Time left: {}'.format(
             str(elapsed * (1 / progress) - elapsed).split('.')[0]))
 
-    # Check hues
-    min_hue_diff_scheme = \
-        min([scheme[i + 1][0] - scheme[i][0] for i in range(5)]
-            + [scheme[0][0] + 360 - scheme[-1][0]])
-    if min_hue_diff_scheme < min_hue_diff:
-        return
-
-    # Check Delta E values
-    # Initialize variable for loop
+    # Initialize variables for loop
     min_delta = float('inf')
+    min_hue_diff_scheme = float('inf')
     global current_min_delta
-    # Compare Delta E of adjacent hues
+    i = 0  # Last iteration over pairs if `i == n`
+    # Compare adjacent colors
     for c1, c2 in pairs(scheme):
-        delta = deltas[(c1[0], c2[0])]
+        i += 1
+        # Hue difference
+        if i == n:
+            hue_diff = 360 - c1[0] + c2[0]
+        else:
+            hue_diff = c2[0] - c1[0]
+        if hue_diff < min_hue_diff:
+            return
+        min_hue_diff_scheme = min(hue_diff, min_hue_diff_scheme)
+        # Delta E
+        if i == n:
+            delta = deltas[(c2[0], c1[0])]
+        else:
+            delta = deltas[(c1[0], c2[0])]
         if delta < current_min_delta.value:
             return
         # This is the Delta E of the scheme’s worst color combination
@@ -244,8 +251,7 @@ def pairs(lst):
     for item in i:
         yield prev, item
         prev = item
-    # Order matters for dictionary lookup
-    yield first, item
+    yield item, first
 
 
 if __name__ == "__main__":

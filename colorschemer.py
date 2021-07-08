@@ -45,9 +45,6 @@ bright = True
 hue_step = 12
 # Discard scheme if any hue combination is less than this many degrees apart
 min_hue_diff = 12
-# Enable to use more RAM for better performance, disable to process larger
-# numbers of schemes that will not fit into your RAM
-load_schemes_into_ram = False
 # Output schemes as soon as they are found
 output_schemes_early = False
 # Parameters depending on bright or dark background
@@ -124,22 +121,6 @@ def check_scheme(scheme):
     # Due to lazy evaluation with grouper(), scheme can be None
     if not scheme:
         return
-    global lock
-
-    # Show progress
-    global processed
-    with lock:
-        processed.value += 1
-        processed_schemes = processed.value
-    if processed_schemes % 100000 == 0:
-        elapsed = datetime.utcnow() - start_time
-        progress = processed_schemes / total_schemes
-        print('== Progress: {}/{} {}%'.format(
-            processed_schemes, total_schemes,
-            int(round(progress * 100))))
-        print('   Elapsed time: {}'.format(str(elapsed).split('.')[0]))
-        print('   Time left: {}'.format(
-            str(elapsed * (1 / progress) - elapsed).split('.')[0]))
 
     # Initialize variables for loop
     min_delta = float('inf')
@@ -168,6 +149,7 @@ def check_scheme(scheme):
         min_delta = min(min_delta, delta)
     new_best = False
     notify = False
+    global lock
     with lock:
         if current_min_delta.value < min_delta:
             new_best = True
@@ -296,20 +278,43 @@ if __name__ == "__main__":
     # Discard schemes if they contain hues that are too similar or if their
     # Delta E of any two colors is too low
     current_min_delta = Value('f', 0)
-    processed = Value('i', 0)
-    lock = Lock()
+    # Count processed schemes
+    processed = 0
+    # List of checked themes that may end up as optimal
     schemes_checked = []
+    lock = Lock()
+    # Start with a reference theme to initialize minimum Delta E
+    # Pick n equally spaced reference hues
+    step = int(len(hues) / (n + 1))
+    hues_ref = hues[int(step / 2)::step][:n]
+    scheme = [convert_hue(hue) for hue in hues_ref]
+    check_scheme(scheme)
     # Process all other schemes
     with Pool(processes) as pool:
-        if load_schemes_into_ram:
-            schemes_checked.extend(pool.map(check_scheme, schemes))
-        else:
-            # Chunks of 500000 have been fastest in my testing, but it probably
-            # depends on the number of schemes
-            # (Note that there is some overhead for the last chunk because it
-            # gets filled with None values to reach the chunk size)
-            for chunk in grouper(schemes, 500000):
-                schemes_checked.extend(pool.map(check_scheme, chunk))
+        # Optimal chunk size probably depends on the number of schemes,
+        # your CPU and your amount of RAM
+        # (Note that there is some overhead for the last chunk because it
+        # gets filled with None values to reach the chunk size and huge
+        # chunks cause ctrl+c to take a long time)
+        chunk_size = 500000
+        for chunk in grouper(schemes, chunk_size):
+            schemes_checked.extend(pool.map(check_scheme, chunk))
+            processed += chunk_size
+            # Discard worse schemes to recover RAM
+            schemes_checked = [
+                s for s in schemes_checked
+                if s and s[0] >= current_min_delta.value]
+            # Last chunk
+            if total_schemes - processed < chunk_size:
+                # Last, partial chunk would give wonky progress numbers
+                continue
+            elapsed = datetime.utcnow() - start_time
+            progress = processed / total_schemes
+            print('== Progress: {}/{} {}%'.format(
+                processed, total_schemes, int(round(progress * 100))))
+            print('   Elapsed time: {}'.format(str(elapsed).split('.')[0]))
+            print('   Time left: {}'.format(
+                str(elapsed * (1 / progress) - elapsed).split('.')[0]))
         pool.close()
         pool.join()
 

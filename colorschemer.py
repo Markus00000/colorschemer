@@ -206,8 +206,6 @@ def color_to_str(color):
 def output_scheme(scheme):
     """Output a color scheme."""
     hues = [color[0] for color in scheme[2]]
-    if scheme[1] - min_hue_diff < hue_step:
-        print('# Warning: Scheme borders minimal hue difference')
     equation = delta_e.__name__.split('_')[-1]
     print(f'# Minimum Delta E ({equation}): {scheme[0]}')
     print(f'# Minimum hue difference: {scheme[1]}')

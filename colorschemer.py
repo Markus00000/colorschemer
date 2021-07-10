@@ -279,14 +279,13 @@ if __name__ == "__main__":
     # Count processed schemes
     processed = 0
     # List of checked themes that may end up as optimal
-    schemes_checked = []
     lock = Lock()
     # Start with a reference theme to initialize minimum Delta E
     # Pick n equally spaced reference hues
     step = int(len(hues) / (n + 1))
     hues_ref = hues[int(step / 2)::step][:n]
     scheme = [convert_hue(hue) for hue in hues_ref]
-    check_scheme(scheme)
+    schemes_checked = [check_scheme(scheme)]
     # Process all other schemes
     with Pool(processes) as pool:
         # Optimal chunk size probably depends on the number of schemes,

@@ -294,26 +294,30 @@ if __name__ == "__main__":
         # gets filled with None values to reach the chunk size and huge
         # chunks cause ctrl+c to take a long time)
         chunk_size = 500000
-        for chunk in grouper(schemes, chunk_size):
-            schemes_checked.extend(pool.map(check_scheme, chunk))
-            processed += chunk_size
-            # Discard worse schemes to recover RAM
-            schemes_checked = [
-                s for s in schemes_checked
-                if s and s[0] >= current_min_delta.value]
-            # Last chunk
-            if total_schemes - processed < chunk_size:
-                # Last, partial chunk would give wonky progress numbers
-                continue
-            elapsed = datetime.utcnow() - start_time
-            progress = processed / total_schemes
-            print('== Progress: {}/{} {}%'.format(
-                processed, total_schemes, int(round(progress * 100))))
-            print('   Elapsed time: {}'.format(str(elapsed).split('.')[0]))
-            print('   Time left: {}'.format(
-                str(elapsed * (1 / progress) - elapsed).split('.')[0]))
-        pool.close()
-        pool.join()
+        single_chunk = total_schemes <= chunk_size
+        if single_chunk:
+            schemes_checked.extend(pool.map(check_scheme, schemes))
+        else:
+            for chunk in grouper(schemes, chunk_size):
+                schemes_checked.extend(pool.map(check_scheme, chunk))
+                processed += chunk_size
+                # Discard worse schemes to recover RAM
+                schemes_checked = [
+                    s for s in schemes_checked
+                    if s and s[0] >= current_min_delta.value]
+                # Last chunk
+                if total_schemes - processed < chunk_size:
+                    # Last, partial chunk would give wonky progress numbers
+                    continue
+                elapsed = datetime.utcnow() - start_time
+                progress = processed / total_schemes
+                print('== Progress: {}/{} {}%'.format(
+                    processed, total_schemes, int(round(progress * 100))))
+                print('   Elapsed time: {}'.format(str(elapsed).split('.')[0]))
+                print('   Time left: {}'.format(
+                    str(elapsed * (1 / progress) - elapsed).split('.')[0]))
+            pool.close()
+            pool.join()
 
     # Remove None values and sort schemes by their minimum Delta E
     schemes_checked = sorted([scheme for scheme in schemes_checked if scheme],

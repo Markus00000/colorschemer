@@ -44,7 +44,7 @@ bright = True
 # 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 18, 20, 24, 30, 36, 40, 45, 60
 hue_step = 12
 # Discard scheme if any hue combination is less than this many degrees apart
-min_hue_diff = 12
+min_hue_diff = hue_step
 # Output schemes as soon as they are found
 output_schemes_early = False
 # Parameters depending on bright or dark background

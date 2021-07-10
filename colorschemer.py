@@ -275,7 +275,7 @@ if __name__ == "__main__":
 
     # Discard schemes if they contain hues that are too similar or if their
     # Delta E of any two colors is too low
-    current_min_delta = Value('f', 0)
+    current_min_delta = Value('d', 0)
     # Count processed schemes
     processed = 0
     # List of checked themes that may end up as optimal

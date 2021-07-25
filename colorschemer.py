@@ -293,18 +293,20 @@ if __name__ == "__main__":
         # (Note that there is some overhead for the last chunk because it
         # gets filled with None values to reach the chunk size and huge
         # chunks cause ctrl+c to take a long time)
-        chunk_size = 500000
-        single_chunk = total_schemes <= chunk_size
-        if single_chunk:
-            schemes_checked.extend(pool.map(check_scheme, schemes))
+        if total_schemes < 100000:
+            schemes_checked += pool.map(check_scheme, schemes)
         else:
+            chunk_size = 500000
+            previous_min_delta = 0
             for chunk in grouper(schemes, chunk_size):
-                schemes_checked.extend(pool.map(check_scheme, chunk))
+                schemes_checked += pool.map(check_scheme, chunk)
                 processed += chunk_size
                 # Discard worse schemes to recover RAM
-                schemes_checked = [
-                    s for s in schemes_checked
-                    if s and s[0] >= current_min_delta.value]
+                if current_min_delta.value > previous_min_delta:
+                    schemes_checked = [
+                        s for s in schemes_checked
+                        if s and s[0] >= current_min_delta.value]
+                    previous_min_delta = current_min_delta.value
                 # Last chunk
                 if total_schemes - processed < chunk_size:
                     # Last, partial chunk would give wonky progress numbers
